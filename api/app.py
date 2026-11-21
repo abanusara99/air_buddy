@@ -6,7 +6,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-app = Flask(__name__)
+# ------------------------------------------------------------
+# Fix for TemplateNotFound: tell Flask where templates/static
+# live relative to this file (they are one level up in api/..)
+# ------------------------------------------------------------
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, "templates"),
+    static_folder=os.path.join(BASE_DIR, "static"),
+)
 
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
