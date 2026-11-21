@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import Flask, request, jsonify, render_template,send_from_directory
+from flask import Flask, request, jsonify, render_template
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -12,14 +12,6 @@ client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.getenv("OPENROUTER_API_KEY"),
 )
-
-@app.route('/favicon.ico')
-def favicon():
-    return send_from_directory(
-        os.path.join(app.root_path, 'static'),
-        'favicon.ico',
-        mimetype='image/vnd.microsoft.icon'
-    )
 
 MODEL = "openrouter/free"
 
@@ -125,6 +117,13 @@ def quota():
         })
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/favicon.ico")
+def favicon():
+    # Return an empty 204 response so the browser stops asking for a favicon.
+    # This avoids the 500/404 error on Vercel's read-only filesystem.
+    return "", 204
 
 
 if __name__ == "__main__":
