@@ -36,7 +36,6 @@
         <button id="askBtn" onclick="askAirBuddy()">Get Advice</button>
     </div>
 
-    <!-- Popup modal: title + advice + quota -->
     <div id="resultModal" class="modal-overlay">
         <div class="modal-box">
             <button id="closeModal" class="modal-close" aria-label="Close">✕</button>
@@ -47,7 +46,6 @@
     </div>
 
     <script>
-        // Reset form on page load (fixes browser remembering old dropdown values)
         window.addEventListener("pageshow", function () {
             document.getElementById("region").value = "";
             const citySelect = document.getElementById("city");

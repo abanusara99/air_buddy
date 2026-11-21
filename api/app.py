@@ -121,10 +121,9 @@ def quota():
 
 @app.route("/favicon.ico")
 def favicon():
-    # Return an empty 204 response so the browser stops asking for a favicon.
-    # This avoids the 500/404 error on Vercel's read-only filesystem.
     return "", 204
 
 
+# Local development only. Vercel ignores this block.
 if __name__ == "__main__":
     app.run(debug=True)
