@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirBuddy · Family Air Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="card">
+        <h1>🌬️ AirBuddy</h1>
+        <p class="subtitle">Friendly air protection advice for your family</p>
+
+        <label for="aqi">Current AQI</label>
+        <input id="aqi" type="number" placeholder="e.g. 150" value="150">
+
+        <label for="region">Region</label>
+        <select id="region">
+            <option value="">-- Select Region --</option>
+            {% for region in regions %}
+            <option value="{{ region }}">{{ region }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="city">City</label>
+        <select id="city" disabled>
+            <option value="">-- Select Region First --</option>
+        </select>
+
+        <label for="household">Household situation</label>
+        <input id="household" type="text" placeholder="e.g. family with a child, elderly with asthma" value="Family with a child">
+
+        <label for="question">What do you want to ask?</label>
+        <textarea id="question" placeholder="e.g. How should we protect ourselves today?">How should we protect ourselves today?</textarea>
+
+        <button id="askBtn" onclick="askAirBuddy()">Get Advice</button>
+    </div>
+
+    <!-- Popup modal: title + advice + quota -->
+    <div id="resultModal" class="modal-overlay">
+        <div class="modal-box">
+            <button id="closeModal" class="modal-close" aria-label="Close">✕</button>
+            <h2 class="modal-title">AirBuddy says</h2>
+            <div id="result" class="modal-content"></div>
+            <div id="quotaInfo" class="quota-info"></div>
+        </div>
+    </div>
+
+    <script>
+        // Reset form on page load (fixes browser remembering old dropdown values)
+        window.addEventListener("pageshow", function () {
+            document.getElementById("region").value = "";
+            const citySelect = document.getElementById("city");
+            citySelect.innerHTML = '<option value="">-- Select Region First --</option>';
+            citySelect.disabled = true;
+        });
+
+        document.getElementById("region").addEventListener("change", async function () {
+            const region = this.value;
+            const citySelect = document.getElementById("city");
+            citySelect.innerHTML = '<option value="">Loading…</option>';
+            citySelect.disabled = true;
+
+            if (!region) {
+                citySelect.innerHTML = '<option value="">-- Select Region First --</option>';
+                return;
+            }
+
+            try {
+                const res = await fetch("/cities/" + encodeURIComponent(region));
+                const cities = await res.json();
+                citySelect.innerHTML = '<option value="">-- Select City --</option>';
+                cities.forEach(function (city) {
+                    const option = document.createElement("option");
+                    option.value = city;
+                    option.textContent = city;
+                    citySelect.appendChild(option);
+                });
+                citySelect.disabled = false;
+            } catch (e) {
+                citySelect.innerHTML = '<option value="">Failed to load cities</option>';
+            }
+        });
+
+        const modal = document.getElementById("resultModal");
+        const resultBox = document.getElementById("result");
+        const quotaBox = document.getElementById("quotaInfo");
+        const closeBtn = document.getElementById("closeModal");
+
+        function openModal(text, isError) {
+            resultBox.textContent = text;
+            resultBox.classList.toggle("error", !!isError);
+            modal.classList.add("open");
+        }
+
+        function closeModal() {
+            modal.classList.remove("open");
+        }
+
+        closeBtn.addEventListener("click", closeModal);
+        modal.addEventListener("click", function (e) {
+            if (e.target === modal) closeModal();
+        });
+        document.addEventListener("keydown", function (e) {
+            if (e.key === "Escape") closeModal();
+        });
+
+        async function fetchQuota() {
+            try {
+                const res = await fetch("/quota");
+                const data = await res.json();
+                if (data.ok && data.free_model_daily_requests) {
+                    const q = data.free_model_daily_requests;
+                    quotaBox.textContent = `Free requests today: ${q.used} used / ${q.limit} limit (${q.remaining} remaining)`;
+                } else {
+                    quotaBox.textContent = "Quota information unavailable.";
+                }
+            } catch (e) {
+                quotaBox.textContent = "Quota information unavailable.";
+            }
+        }
+
+        async function askAirBuddy() {
+            const btn = document.getElementById("askBtn");
+            btn.disabled = true;
+            btn.textContent = "AirBuddy is thinking…";
+            openModal("Please wait…", false);
+            quotaBox.textContent = "";
+
+            const payload = {
+                aqi: document.getElementById("aqi").value,
+                region: document.getElementById("region").value,
+                city: document.getElementById("city").value,
+                household: document.getElementById("household").value,
+                question: document.getElementById("question").value,
+            };
+
+            try {
+                const res = await fetch("/advice", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    openModal(data.advice, false);
+                } else {
+                    openModal(data.advice + (data.error ? "\n\n(" + data.error + ")" : ""), true);
+                }
+            } catch (e) {
+                openModal("Network error. Please make sure the Flask server is running.", true);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "Get Advice";
+                await fetchQuota();
+            }
+        }
+    </script>
+</body>
+</html>
